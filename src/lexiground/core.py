@@ -1,3 +1,5 @@
+from pathlib import Path
+import joblib
 from .datasets import NormDataset
 from .embeddings import create_embedder
 from .models import RidgeEstimator
@@ -34,9 +36,8 @@ class LexiGround:
             **embedding_kwargs,
         )
 
-        # Models are fitted lazily.
-        # This means the user does not have to call fit().
-        self.models = {}
+        
+        self.models = self._load_pretrained_models()
 
     # ---------------------------------------------------------
     # DATASET INFORMATION
@@ -56,7 +57,33 @@ class LexiGround:
             word,
             feature,
         )
+    def _load_pretrained_models(self):
+        """
+        Load pre-trained SBERT → Ridge models.
+        """
+        package_root = Path(__file__).resolve().parents[2]
+        model_dir = (
+           package_root
+           / "models"
+           / "sbert"
+        )
+        models = {}
+        if not model_dir.exists():
+           return models
+        for model_path in model_dir.glob(
+            "sbert_*.joblib"
+        ):
+            feature = (
+                model_path.stem
+                .replace("sbert_", "")
+            )
+            model = RidgeEstimator()
+            model.load(
+                model_path
+            )
+            models[feature] = model
 
+        return models
     # ---------------------------------------------------------
     # MODEL TRAINING
     # ---------------------------------------------------------
@@ -140,14 +167,11 @@ class LexiGround:
         self.models[feature] = model
 
     def _ensure_model(self, feature):
-        """
-        Make sure an estimator exists for the requested feature.
-
-        If it has not yet been trained, train it automatically.
-        """
-
         if feature not in self.models:
-            self._fit_feature(feature)
+            raise ValueError(
+                f"No pre-trained model is available "
+                f"for feature '{feature}'."
+            )
 
     # ---------------------------------------------------------
     # PREDICTION
