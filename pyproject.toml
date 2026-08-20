@@ -1,1 +1,45 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
 
+[project]
+name = "lexiground"
+version = "0.1.0"
+description = "Lexical iconicity and sensorimotor norm lookup and estimation using word embeddings."
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = [
+    "numpy",
+    "pandas",
+    "scipy",
+    "scikit-learn",
+    "joblib",
+]
+
+[project.optional-dependencies]
+sbert = [
+    "sentence-transformers",
+]
+
+glove = [
+    "gensim",
+]
+
+fasttext = [
+    "fasttext",
+]
+
+all = [
+    "sentence-transformers",
+    "gensim",
+    "fasttext",
+]
+
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
