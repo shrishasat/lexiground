@@ -5,10 +5,10 @@ from .models import RidgeEstimator
 
 class LexiGround:
     """
-    Main LexiGround interface.
+    Main public interface for LexiGround.
 
-    Provides human lexical norm lookup and
-    model-based estimation for missing words.
+    For each word, LexiGround returns human ratings when available
+    and SBERT/Ridge estimates when a human rating is unavailable.
     """
 
     def __init__(
@@ -34,30 +34,39 @@ class LexiGround:
             **embedding_kwargs,
         )
 
+        # Models are fitted lazily.
+        # This means the user does not have to call fit().
         self.models = {}
 
-    def available_features(self):
+    # ---------------------------------------------------------
+    # DATASET INFORMATION
+    # ---------------------------------------------------------
 
+    def available_features(self):
+        """Return all available lexical features."""
         return self.datasets.available_features()
 
-    def lookup_human(
-        self,
-        word,
-        feature,
-    ):
+    # ---------------------------------------------------------
+    # HUMAN LOOKUP
+    # ---------------------------------------------------------
 
+    def lookup_human(self, word, feature):
+        """Return the human rating if available."""
         return self.datasets.lookup(
             word,
             feature,
         )
 
-    def fit(
-        self,
-        feature,
-        alpha=1.0,
-    ):
+    # ---------------------------------------------------------
+    # MODEL TRAINING
+    # ---------------------------------------------------------
 
-        # Determine which dataset contains feature
+    def _fit_feature(self, feature, alpha=1.0):
+        """
+        Internally fit an SBERT → Ridge model for one feature.
+
+        Users normally do not need to call this.
+        """
 
         if feature in self.datasets.available_lancaster_features():
 
@@ -99,9 +108,7 @@ class LexiGround:
                 f"Unknown feature: {feature}"
             )
 
-        valid = data[
-            rating_column
-        ].notna()
+        valid = data[rating_column].notna()
 
         words = (
             data.loc[
@@ -117,10 +124,10 @@ class LexiGround:
             rating_column
         ].to_numpy()
 
-        X = self.embedder.encode(
-            words
-        )
+        # Generate SBERT embeddings
+        X = self.embedder.encode(words)
 
+        # Train Ridge
         model = RidgeEstimator(
             alpha=alpha
         )
@@ -132,20 +139,26 @@ class LexiGround:
 
         self.models[feature] = model
 
-        return self
+    def _ensure_model(self, feature):
+        """
+        Make sure an estimator exists for the requested feature.
 
-    def predict(
-        self,
-        word,
-        feature,
-    ):
+        If it has not yet been trained, train it automatically.
+        """
 
         if feature not in self.models:
+            self._fit_feature(feature)
 
-            raise ValueError(
-                f"No model has been fitted for "
-                f"{feature}. Run .fit('{feature}') first."
-            )
+    # ---------------------------------------------------------
+    # PREDICTION
+    # ---------------------------------------------------------
+
+    def predict(self, word, feature):
+        """
+        Estimate a lexical rating using SBERT + Ridge.
+        """
+
+        self._ensure_model(feature)
 
         X = self.embedder.encode(
             [word]
@@ -157,14 +170,20 @@ class LexiGround:
 
         return float(prediction)
 
+    # ---------------------------------------------------------
+    # SINGLE FEATURE LOOKUP
+    # ---------------------------------------------------------
+
     def lookup(
         self,
         word,
         feature,
         estimate_missing=True,
     ):
+        """
+        Return human or estimated rating for one feature.
+        """
 
-        # First try human rating
         human = self.lookup_human(
             word,
             feature,
@@ -179,7 +198,6 @@ class LexiGround:
                 "source": "human",
             }
 
-        # Missing word
         if not estimate_missing:
 
             return {
@@ -188,16 +206,6 @@ class LexiGround:
                 "value": None,
                 "source": "missing",
             }
-
-        # Estimate if model exists
-        if feature not in self.models:
-
-            raise ValueError(
-                f"'{word}' was not found in the "
-                f"human norms and no estimation model "
-                f"has been fitted for '{feature}'. "
-                f"Run lex.fit('{feature}') first."
-            )
 
         prediction = self.predict(
             word,
@@ -211,3 +219,30 @@ class LexiGround:
             "source": "estimated",
             "embedding": self.embedding_name,
         }
+
+    # ---------------------------------------------------------
+    # MAIN USER API
+    # ---------------------------------------------------------
+
+    def get(self, word):
+        """
+        Return all lexical features for a word.
+
+        Human ratings are returned where available.
+        Missing ratings are estimated automatically.
+        """
+
+        results = {
+            "word": str(word),
+            "features": {},
+        }
+
+        for feature in self.available_features():
+
+            results["features"][feature] = self.lookup(
+                word,
+                feature,
+                estimate_missing=True,
+            )
+
+        return results
