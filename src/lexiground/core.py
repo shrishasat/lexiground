@@ -1,17 +1,22 @@
-import numpy as np
-
 from .datasets import NormDataset
 from .embeddings import create_embedder
 from .models import RidgeEstimator
 
 
 class LexiGround:
+    """
+    Main LexiGround interface.
+
+    Provides human lexical norm lookup and
+    model-based estimation for missing words.
+    """
 
     def __init__(
         self,
         lancaster_path=None,
         iconicity_path=None,
         embedding="sbert",
+        embedding_kwargs=None,
     ):
 
         self.datasets = NormDataset(
@@ -21,151 +26,188 @@ class LexiGround:
 
         self.embedding_name = embedding
 
+        if embedding_kwargs is None:
+            embedding_kwargs = {}
+
         self.embedder = create_embedder(
-            embedding
+            embedding,
+            **embedding_kwargs,
         )
 
         self.models = {}
 
+    def available_features(self):
+
+        return self.datasets.available_features()
+
     def lookup_human(
         self,
         word,
-        dataset="lancaster",
+        feature,
     ):
 
-        if dataset == "lancaster":
-            data = self.datasets.get_lancaster()
-
-        elif dataset == "iconicity":
-            data = self.datasets.get_iconicity()
-
-        else:
-            raise ValueError(
-                "dataset must be 'lancaster' "
-                "or 'iconicity'"
-            )
-
-        matches = data[
-            data["Word"]
-            .astype(str)
-            .str.lower()
-            == word.lower()
-        ]
-
-        if len(matches) == 0:
-            return None
-
-        return matches.iloc[0].to_dict()
-
-    def lookup(
-        self,
-        word,
-        dataset="lancaster",
-        feature=None,
-    ):
-
-        human = self.lookup_human(
+        return self.datasets.lookup(
             word,
-            dataset=dataset,
-        )
-
-        if human is not None:
-
-            if feature is None:
-                return {
-                    "word": word,
-                    "source": "human",
-                    "values": human,
-                }
-
-            if feature in human:
-                return {
-                    "word": word,
-                    "feature": feature,
-                    "value": human[feature],
-                    "source": "human",
-                }
-
-        if feature is None:
-            raise ValueError(
-                "Word not found and no feature was specified "
-                "for estimation."
-            )
-
-        return self.predict(
-            word,
-            dataset=dataset,
-            feature=feature,
+            feature,
         )
 
     def fit(
         self,
-        dataset,
         feature,
+        alpha=1.0,
     ):
 
-        if dataset == "lancaster":
+        # Determine which dataset contains feature
+
+        if feature in self.datasets.available_lancaster_features():
+
             data = self.datasets.get_lancaster()
 
-        elif dataset == "iconicity":
+            column_map = {
+                "Auditory": "Auditory.mean",
+                "Gustatory": "Gustatory.mean",
+                "Haptic": "Haptic.mean",
+                "Interoceptive": "Interoceptive.mean",
+                "Olfactory": "Olfactory.mean",
+                "Visual": "Visual.mean",
+                "Foot_leg": "Foot_leg.mean",
+                "Hand_arm": "Hand_arm.mean",
+                "Head": "Head.mean",
+                "Mouth": "Mouth.mean",
+                "Torso": "Torso.mean",
+                "Minkowski3_perceptual":
+                    "Minkowski3.perceptual",
+                "Minkowski3_action":
+                    "Minkowski3.action",
+                "Minkowski3_sensorimotor":
+                    "Minkowski3.sensorimotor",
+            }
+
+            word_column = "Word"
+            rating_column = column_map[feature]
+
+        elif feature == "Iconicity":
+
             data = self.datasets.get_iconicity()
 
+            word_column = "word"
+            rating_column = "rating"
+
         else:
+
             raise ValueError(
-                "Unknown dataset."
+                f"Unknown feature: {feature}"
             )
 
-        words = data["Word"].astype(str)
+        valid = data[
+            rating_column
+        ].notna()
 
-        valid = data[feature].notna()
-
-        words = words[valid].tolist()
+        words = (
+            data.loc[
+                valid,
+                word_column
+            ]
+            .astype(str)
+            .tolist()
+        )
 
         y = data.loc[
             valid,
-            feature
+            rating_column
         ].to_numpy()
 
-        X = self.embedder.encode(words)
+        X = self.embedder.encode(
+            words
+        )
 
-        model = RidgeEstimator()
+        model = RidgeEstimator(
+            alpha=alpha
+        )
 
-        model.fit(X, y)
+        model.fit(
+            X,
+            y
+        )
 
-        self.models[
-            (dataset, feature)
-        ] = model
+        self.models[feature] = model
 
         return self
 
     def predict(
         self,
         word,
-        dataset,
         feature,
     ):
 
-        key = (dataset, feature)
+        if feature not in self.models:
 
-        if key not in self.models:
             raise ValueError(
-                f"Model for {dataset}/{feature} "
-                "has not been fitted."
+                f"No model has been fitted for "
+                f"{feature}. Run .fit('{feature}') first."
             )
 
-        embedding = self.embedder.encode(
+        X = self.embedder.encode(
             [word]
         )
 
         prediction = self.models[
-            key
-        ].predict(embedding)[0]
+            feature
+        ].predict(X)[0]
+
+        return float(prediction)
+
+    def lookup(
+        self,
+        word,
+        feature,
+        estimate_missing=True,
+    ):
+
+        # First try human rating
+        human = self.lookup_human(
+            word,
+            feature,
+        )
+
+        if human is not None:
+
+            return {
+                "word": word,
+                "feature": feature,
+                "value": human,
+                "source": "human",
+            }
+
+        # Missing word
+        if not estimate_missing:
+
+            return {
+                "word": word,
+                "feature": feature,
+                "value": None,
+                "source": "missing",
+            }
+
+        # Estimate if model exists
+        if feature not in self.models:
+
+            raise ValueError(
+                f"'{word}' was not found in the "
+                f"human norms and no estimation model "
+                f"has been fitted for '{feature}'. "
+                f"Run lex.fit('{feature}') first."
+            )
+
+        prediction = self.predict(
+            word,
+            feature,
+        )
 
         return {
             "word": word,
-            "dataset": dataset,
             "feature": feature,
-            "value": float(prediction),
+            "value": prediction,
             "source": "estimated",
             "embedding": self.embedding_name,
         }
