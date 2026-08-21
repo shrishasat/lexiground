@@ -1,6 +1,9 @@
 cff-version: 1.2.0
+
 title: "LexiGround: Estimating Lexical Sensorimotor and Iconicity Ratings from Language Models"
+
 message: "If you use LexiGround in your research, please cite this software."
+
 type: software
 
 authors:
@@ -12,13 +15,13 @@ repository-code: "https://github.com/shrishasat/lexiground"
 url: "https://github.com/shrishasat/lexiground"
 
 abstract: >
-  LexiGround is an open-source Python package for retrieving and
-  estimating lexical semantic ratings. The package provides access
-  to human lexical norm ratings where available and uses pretrained
-  SBERT embeddings with feature-specific Ridge regression models to
-  estimate missing ratings for unseen words. Current models cover
-  auditory, gustatory, haptic, interoceptive, olfactory, visual,
-  motor-related, Minkowski sensorimotor, and iconicity dimensions.
+  LexiGround is an open-source Python package for retrieving and estimating
+  lexical semantic ratings. The package provides access to human lexical
+  norm ratings where available and uses pretrained SBERT embeddings with
+  feature-specific Ridge regression models to estimate missing ratings for
+  unseen words. Current models cover auditory, gustatory, haptic,
+  interoceptive, olfactory, visual, motor-related, Minkowski sensorimotor,
+  and iconicity dimensions.
 
 keywords:
   - lexical semantics
@@ -31,8 +34,8 @@ keywords:
   - computational neuroscience
   - psycholinguistics
 
-
 references:
+
   - type: article
     authors:
       - family-names: "Lynott"
@@ -44,7 +47,7 @@ references:
       - family-names: "Brand"
         given-names: "James"
       - family-names: "Carney"
-        given-names: "James"
+        given-names: "Joanna"
     title: "The Lancaster Sensorimotor Norms: multidimensional measures of perceptual and action strength for 40,000 English words"
     journal: "Behavior Research Methods"
     year: 2020
@@ -59,19 +62,17 @@ references:
       - family-names: "Lupyan"
         given-names: "Gary"
       - family-names: "Perry"
-        given-names: "Lynn K"
+        given-names: "Lynn K."
       - family-names: "Dingemanse"
         given-names: "Mark"
       - family-names: "Perlman"
         given-names: "Marcus"
-
     title: "Iconicity ratings for 14,000+ English words"
     journal: "Behavior Research Methods"
     year: 2024
     volume: 56
-    issue:3
+    issue: 3
     pages: 1640-1655
-
 
 license: MIT
 
