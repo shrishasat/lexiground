@@ -1,1 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
 
+# Python packaging
+*.egg-info/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Testing / validation outputs
+.pytest_cache/
+.coverage
+htmlcov/
+results/
+
+# Local configuration
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
