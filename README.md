@@ -1,6 +1,4 @@
-Yes. Since **0.1.0 is already published**, I would make the README reflect what actually works now, avoid promising a problematic `[sbert]` install command, and clearly separate **human norms** from **model-based estimates**.
 
-One important correction: your validation showed **Iconicity n = 2,955**, while the Lancaster dimensions have **n = 7,942** in your held-out validation. I would present those validation results explicitly rather than implying all features were validated on the same number of words.
 
 # LexiGround
 
