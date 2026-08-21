@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import os
 import pandas as pd
 
 
@@ -26,34 +26,59 @@ ICONICITY_FEATURES = {
 
 
 class NormDataset:
-    """
-    Load and access lexical norm datasets.
-
-    Lancaster Sensorimotor Norms:
-        Lynott et al. (2019)
-
-    Iconicity ratings:
-        User-provided iconicity norm dataset.
-    """
 
     def __init__(
         self,
         lancaster_path=None,
         iconicity_path=None,
+        cache_dir=None,
     ):
 
         self.lancaster = None
         self.iconicity = None
 
+        # --------------------------------------------------
+        # Cache directory
+        # --------------------------------------------------
+
+        if cache_dir is None:
+
+            cache_dir = (
+                Path.home()
+                / ".cache"
+                / "lexiground"
+            )
+
+        self.cache_dir = Path(cache_dir)
+
+        self.cache_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        # --------------------------------------------------
+        # Lancaster
+        # --------------------------------------------------
+
         if lancaster_path is not None:
+
             self.lancaster = self._load_lancaster(
                 lancaster_path
             )
 
+        # --------------------------------------------------
+        # Iconicity
+        # --------------------------------------------------
+
         if iconicity_path is not None:
+
             self.iconicity = self._load_iconicity(
                 iconicity_path
             )
+
+    # ======================================================
+    # PATH HANDLING
+    # ======================================================
 
     @staticmethod
     def _check_path(path):
@@ -61,11 +86,16 @@ class NormDataset:
         path = Path(path)
 
         if not path.exists():
+
             raise FileNotFoundError(
                 f"Dataset not found: {path}"
             )
 
         return path
+
+    # ======================================================
+    # LOAD LANCASTER
+    # ======================================================
 
     @classmethod
     def _load_lancaster(cls, path):
@@ -86,12 +116,12 @@ class NormDataset:
         ]
 
         if missing:
+
             raise ValueError(
                 "Lancaster dataset is missing "
                 f"required columns: {missing}"
             )
 
-        # Standardise word column
         data = data.copy()
 
         data["Word"] = (
@@ -101,6 +131,10 @@ class NormDataset:
         )
 
         return data
+
+    # ======================================================
+    # LOAD ICONICITY
+    # ======================================================
 
     @classmethod
     def _load_iconicity(cls, path):
@@ -121,6 +155,7 @@ class NormDataset:
         ]
 
         if missing:
+
             raise ValueError(
                 "Iconicity dataset is missing "
                 f"required columns: {missing}"
@@ -128,7 +163,6 @@ class NormDataset:
 
         data = data.copy()
 
-        # Standardise iconicity word column
         data["word"] = (
             data["word"]
             .astype(str)
@@ -137,11 +171,16 @@ class NormDataset:
 
         return data
 
+    # ======================================================
+    # DATA ACCESS
+    # ======================================================
+
     def get_lancaster(self):
 
         if self.lancaster is None:
+
             raise ValueError(
-                "Lancaster dataset was not loaded."
+                "Lancaster dataset is not available."
             )
 
         return self.lancaster
@@ -149,11 +188,16 @@ class NormDataset:
     def get_iconicity(self):
 
         if self.iconicity is None:
+
             raise ValueError(
-                "Iconicity dataset was not loaded."
+                "Iconicity dataset is not available."
             )
 
         return self.iconicity
+
+    # ======================================================
+    # FEATURES
+    # ======================================================
 
     def available_lancaster_features(self):
 
@@ -166,22 +210,39 @@ class NormDataset:
         features = []
 
         if self.lancaster is not None:
+
             features.extend(
                 LANCASTER_FEATURES.keys()
             )
 
         if self.iconicity is not None:
+
             features.extend(
                 ICONICITY_FEATURES.keys()
             )
 
         return features
 
-    def lookup(self, word, feature):
+    # ======================================================
+    # LOOKUP
+    # ======================================================
 
-        word = str(word).strip().lower()
+    def lookup(
+        self,
+        word,
+        feature,
+    ):
 
+        word = (
+            str(word)
+            .strip()
+            .lower()
+        )
+
+        # --------------------------------------------------
         # Lancaster
+        # --------------------------------------------------
+
         if feature in LANCASTER_FEATURES:
 
             data = self.get_lancaster()
@@ -193,6 +254,7 @@ class NormDataset:
             ]
 
             if matches.empty:
+
                 return None
 
             column = LANCASTER_FEATURES[
@@ -202,11 +264,15 @@ class NormDataset:
             value = matches.iloc[0][column]
 
             if pd.isna(value):
+
                 return None
 
             return float(value)
 
+        # --------------------------------------------------
         # Iconicity
+        # --------------------------------------------------
+
         if feature in ICONICITY_FEATURES:
 
             data = self.get_iconicity()
@@ -218,6 +284,7 @@ class NormDataset:
             ]
 
             if matches.empty:
+
                 return None
 
             column = ICONICITY_FEATURES[
@@ -227,6 +294,7 @@ class NormDataset:
             value = matches.iloc[0][column]
 
             if pd.isna(value):
+
                 return None
 
             return float(value)
