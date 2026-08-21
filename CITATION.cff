@@ -48,7 +48,8 @@ references:
     title: "The Lancaster Sensorimotor Norms: multidimensional measures of perceptual and action strength for 40,000 English words"
     journal: "Behavior Research Methods"
     year: 2020
-    volume: 52, issue: 3
+    volume: 52
+    issue: 3
     pages: 1271-1291
 
   - type: article
@@ -67,7 +68,8 @@ references:
     title: "Iconicity ratings for 14,000+ English words"
     journal: "Behavior Research Methods"
     year: 2024
-    volume: 56, issue:3
+    volume: 56
+    issue:3
     pages: 1640-1655
 
 
