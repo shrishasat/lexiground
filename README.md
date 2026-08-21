@@ -59,9 +59,7 @@ Clone the repository:
 git clone https://github.com/shrishasat/lexiground.git
 cd lexiground
 
-
-
-
+```
 
 # References
 
