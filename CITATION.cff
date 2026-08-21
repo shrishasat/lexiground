@@ -56,7 +56,7 @@ references:
     journal: "Behavior Research Methods"
     year: 2020
     volume: 52
-    issue: 3
+    number: 3
     pages: 1271-1291
 
   - type: article
@@ -75,7 +75,7 @@ references:
     journal: "Behavior Research Methods"
     year: 2024
     volume: 56
-    issue: 3
+    number: 3
     pages: 1640-1655
 
 license: MIT
