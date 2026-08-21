@@ -9,6 +9,10 @@ type: software
 authors:
   - family-names: "Sathishkumar"
     given-names: "Shrisha"
+  - family-names: "Park"
+    given-names: "Hyojin"
+  - family-names: "Perlman"
+    given-names: "Marcus"
 
 repository-code: "https://github.com/shrishasat/lexiground"
 
