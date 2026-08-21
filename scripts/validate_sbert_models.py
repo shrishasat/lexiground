@@ -190,9 +190,7 @@ def validate_feature(
     )
 
     X_train = embedder.encode(
-        train_data["word"].tolist(),
-        convert_to_numpy=True,
-        show_progress_bar=True,
+        train_data["word"].tolist()
     )
 
     y_train = (
@@ -227,9 +225,7 @@ def validate_feature(
     )
 
     X_test = embedder.encode(
-        test_data["word"].tolist(),
-        convert_to_numpy=True,
-        show_progress_bar=True,
+        test_data["word"].tolist()
     )
 
     y_test = (
