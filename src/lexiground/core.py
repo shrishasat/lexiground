@@ -9,23 +9,17 @@ class LexiGround:
     """
     Main public interface for LexiGround.
 
-    LexiGround provides human lexical ratings when available
-    and estimates missing ratings using pretrained
-    SBERT + Ridge regression models.
+    LexiGround returns human lexical norm ratings when available.
+    For words without human ratings, pretrained SBERT + Ridge models
+    are used to estimate the missing values.
 
-    Parameters
-    ----------
-    lancaster_path : str or Path, optional
-        Path to the Lancaster Sensorimotor Norms CSV.
+    Users normally only need:
 
-    iconicity_path : str or Path, optional
-        Path to the lexical iconicity ratings CSV.
+        from lexiground import LexiGround
 
-    embedding : str, default="sbert"
-        Embedding model used for estimation.
+        lex = LexiGround()
 
-    embedding_kwargs : dict, optional
-        Additional arguments passed to the embedding model.
+        result = lex.get("word")
     """
 
     def __init__(
@@ -36,18 +30,18 @@ class LexiGround:
         embedding_kwargs=None,
     ):
 
-        # -------------------------------------------------
+        # ---------------------------------------------------------
         # DATASETS
-        # -------------------------------------------------
+        # ---------------------------------------------------------
 
         self.datasets = NormDataset(
             lancaster_path=lancaster_path,
             iconicity_path=iconicity_path,
         )
 
-        # -------------------------------------------------
+        # ---------------------------------------------------------
         # EMBEDDING MODEL
-        # -------------------------------------------------
+        # ---------------------------------------------------------
 
         self.embedding_name = embedding
 
@@ -59,58 +53,72 @@ class LexiGround:
             **embedding_kwargs,
         )
 
-        # -------------------------------------------------
+        # ---------------------------------------------------------
         # PRETRAINED MODELS
-        # -------------------------------------------------
+        # ---------------------------------------------------------
 
         self.models = self._load_pretrained_models()
 
-    # =====================================================
+    # =============================================================
+    # DATASET INFORMATION
+    # =============================================================
+
+    def available_features(self):
+        """
+        Return all available lexical features.
+        """
+
+        return self.datasets.available_features()
+
+    # =============================================================
+    # HUMAN LOOKUP
+    # =============================================================
+
+    def lookup_human(
+        self,
+        word,
+        feature,
+    ):
+        """
+        Return the human rating for a word and feature.
+
+        Returns None if the word does not have a human rating.
+        """
+
+        return self.datasets.lookup(
+            word,
+            feature,
+        )
+
+    # =============================================================
     # PRETRAINED MODEL LOADING
-    # =====================================================
+    # =============================================================
 
     def _load_pretrained_models(self):
         """
-        Load pretrained SBERT → Ridge models.
+        Load pretrained SBERT → Ridge models bundled with
+        the LexiGround package.
 
-        Models are stored in:
+        Models are stored inside:
 
-            repo/models/sbert/
-
-        Each model is named:
-
-            sbert_<feature>.joblib
+            lexiground/models/sbert/
         """
 
-        # -------------------------------------------------
-        # Development location on BlueBEAR
-        # -------------------------------------------------
-
-        model_dir = Path(
-            "/rds/projects/p/parkh-speech-linguistics-01/"
-            "lexiground/repo/models/sbert"
+        model_dir = (
+            Path(__file__).resolve()
+            .parent
+            / "models"
+            / "sbert"
         )
 
         models = {}
 
         if not model_dir.exists():
-
-            print(
-                f"Warning: pretrained model directory "
-                f"not found:\n{model_dir}"
-            )
-
             return models
 
-        # -------------------------------------------------
-        # Load every model
-        # -------------------------------------------------
-
-        model_paths = sorted(
-            model_dir.glob("sbert_*.joblib")
-        )
-
-        for model_path in model_paths:
+        for model_path in model_dir.glob(
+            "sbert_*.joblib"
+        ):
 
             feature = (
                 model_path.stem
@@ -125,68 +133,32 @@ class LexiGround:
 
             models[feature] = model
 
-        print(
-            f"Loaded {len(models)} pretrained models."
-        )
-
         return models
 
-    # =====================================================
-    # FEATURE INFORMATION
-    # =====================================================
-
-    def available_features(self):
-        """
-        Return features for which human datasets
-        are currently available.
-        """
-
-        return self.datasets.available_features()
-
-    # =====================================================
-    # HUMAN LOOKUP
-    # =====================================================
-
-    def lookup_human(
-        self,
-        word,
-        feature,
-    ):
-        """
-        Return the human rating for a word and feature.
-
-        Returns None if the word is not present.
-        """
-
-        return self.datasets.lookup(
-            word,
-            feature,
-        )
-
-    # =====================================================
-    # MODEL CHECK
-    # =====================================================
+    # =============================================================
+    # MODEL AVAILABILITY
+    # =============================================================
 
     def _ensure_model(
         self,
         feature,
     ):
         """
-        Check whether a pretrained model exists.
+        Check that a pretrained model exists for the feature.
         """
 
         if feature not in self.models:
 
             raise ValueError(
-                f"No pretrained model is available "
+                f"No pre-trained model is available "
                 f"for feature '{feature}'. "
-                f"Available models: "
+                f"Available model features: "
                 f"{list(self.models.keys())}"
             )
 
-    # =====================================================
+    # =============================================================
     # PREDICTION
-    # =====================================================
+    # =============================================================
 
     def predict(
         self,
@@ -194,38 +166,42 @@ class LexiGround:
         feature,
     ):
         """
-        Estimate a lexical rating using:
+        Estimate a lexical rating using a pretrained
+        SBERT + Ridge model.
 
-            word
-              ↓
-            SBERT
-              ↓
-        pretrained Ridge
-              ↓
-          prediction
+        Parameters
+        ----------
+        word : str
+            Word to estimate.
+
+        feature : str
+            Lexical feature to estimate.
+
+        Returns
+        -------
+        float
+            Predicted lexical rating.
         """
 
         self._ensure_model(
             feature
         )
 
-        embedding = self.embedder.encode(
+        X = self.embedder.encode(
             [str(word)]
         )
 
         prediction = self.models[
             feature
-        ].predict(
-            embedding
-        )[0]
+        ].predict(X)[0]
 
         return float(
             prediction
         )
 
-    # =====================================================
+    # =============================================================
     # SINGLE FEATURE LOOKUP
-    # =====================================================
+    # =============================================================
 
     def lookup(
         self,
@@ -234,22 +210,17 @@ class LexiGround:
         estimate_missing=True,
     ):
         """
-        Return either a human rating or an estimate.
+        Return the human or estimated rating for one feature.
 
-        Returns
-        -------
-        dict
-            Contains:
-
-            word
-            feature
-            value
-            source
+        Human ratings take priority. If no human rating exists,
+        the pretrained SBERT + Ridge model is used automatically.
         """
 
-        # -------------------------------------------------
+        word = str(word).strip()
+
+        # ---------------------------------------------------------
         # Try human rating first
-        # -------------------------------------------------
+        # ---------------------------------------------------------
 
         human = self.lookup_human(
             word,
@@ -259,28 +230,28 @@ class LexiGround:
         if human is not None:
 
             return {
-                "word": str(word),
+                "word": word,
                 "feature": feature,
                 "value": human,
                 "source": "human",
             }
 
-        # -------------------------------------------------
-        # Word missing and estimation disabled
-        # -------------------------------------------------
+        # ---------------------------------------------------------
+        # Return missing if estimation disabled
+        # ---------------------------------------------------------
 
         if not estimate_missing:
 
             return {
-                "word": str(word),
+                "word": word,
                 "feature": feature,
                 "value": None,
                 "source": "missing",
             }
 
-        # -------------------------------------------------
+        # ---------------------------------------------------------
         # Estimate using pretrained model
-        # -------------------------------------------------
+        # ---------------------------------------------------------
 
         prediction = self.predict(
             word,
@@ -288,28 +259,42 @@ class LexiGround:
         )
 
         return {
-            "word": str(word),
+            "word": word,
             "feature": feature,
             "value": prediction,
             "source": "estimated",
             "embedding": self.embedding_name,
         }
 
-    # =====================================================
+    # =============================================================
     # MAIN USER API
-    # =====================================================
+    # =============================================================
 
     def get(
         self,
         word,
     ):
         """
-        Return all available lexical ratings for a word.
+        Return all lexical features for a word.
 
-        Human ratings are used when available.
+        Human ratings are returned where available.
+        Missing ratings are automatically estimated using
+        pretrained SBERT + Ridge models.
 
-        Otherwise, pretrained SBERT + Ridge models
-        are used to estimate the rating.
+        Parameters
+        ----------
+        word : str
+            Word to look up.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the word and all lexical features.
+
+        Example
+        -------
+        >>> lex = LexiGround()
+        >>> lex.get("neuroscience")
         """
 
         word = str(word).strip()
@@ -319,12 +304,7 @@ class LexiGround:
             "features": {},
         }
 
-        # -------------------------------------------------
-        # We use the features for which we have
-        # pretrained models.
-        # -------------------------------------------------
-
-        for feature in self.models.keys():
+        for feature in self.available_features():
 
             results["features"][feature] = (
                 self.lookup(
