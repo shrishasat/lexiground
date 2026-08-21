@@ -84,3 +84,8 @@ Issues = "https://github.com/shrishasat/lexiground/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+lexiground = [
+    "models/sbert/*.joblib",
+]
