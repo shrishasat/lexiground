@@ -9,6 +9,7 @@ type: software
 authors:
   - family-names: "Sathishkumar"
     given-names: "Shrisha"
+Collaborators:
   - family-names: "Park"
     given-names: "Hyojin"
   - family-names: "Perlman"
