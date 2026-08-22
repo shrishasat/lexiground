@@ -345,7 +345,7 @@ python examples/example.py
 
 If you use LexiGround in research, please cite the software:
 
-> Sathishkumar et al., (2026). *LexiGround: Estimating Lexical Sensorimotor and Iconicity Ratings from Language Models* (Version 0.1.0) [Computer software]. [https://github.com/shrishasat/lexiground](https://github.com/shrishasat/lexiground)
+> Sathishkumar S., (2026). *LexiGround: Estimating Lexical Sensorimotor and Iconicity Ratings from Language Models* (Version 0.1.0) [Computer software]. [https://github.com/shrishasat/lexiground](https://github.com/shrishasat/lexiground)
 
 Please also cite the original lexical norm datasets used by LexiGround:
 
